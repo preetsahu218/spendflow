@@ -1,0 +1,164 @@
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model User {
+  id                 String          @id @default(uuid())
+  email              String          @unique
+  password           String
+  name               String
+  avatar             String?
+  currency           String          @default("USD")
+  createdAt          DateTime        @default(now())
+  updatedAt          DateTime        @updatedAt
+
+  expenses           Expense[]
+  budgets            Budget[]
+  categories         Category[]
+  groupMemberships   GroupMember[]
+  createdGroups      Group[]         @relation("CreatedGroups")
+  sharedExpensesPaid SharedExpense[] @relation("PaidSharedExpenses")
+  splits             ExpenseSplit[]
+  settlementsPaid    Settlement[]    @relation("PayerSettlements")
+  settlementsReceived Settlement[]   @relation("PayeeSettlements")
+  activities         ActivityLog[]
+}
+
+model Category {
+  id        String    @id @default(uuid())
+  name      String
+  type      String    @default("EXPENSE") // EXPENSE, INCOME
+  icon      String    @default("tag")
+  color     String    @default("#6366f1")
+  isDefault Boolean   @default(false)
+  userId    String?
+  user      User?     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expenses  Expense[]
+  budgets   Budget[]
+}
+
+model Expense {
+  id                 String    @id @default(uuid())
+  userId             String
+  user               User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  categoryId         String
+  category           Category  @relation(fields: [categoryId], references: [id])
+  amount             Float
+  type               String    @default("EXPENSE") // EXPENSE, INCOME
+  description        String
+  date               DateTime  @default(now())
+  paymentMethod      String    @default("CARD") // CASH, CARD, UPI, BANK_TRANSFER, OTHER
+  isRecurring        Boolean   @default(false)
+  recurrenceInterval String?   // DAILY, WEEKLY, MONTHLY, YEARLY
+  notes              String?
+  receiptUrl         String?
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+}
+
+model Budget {
+  id             String   @id @default(uuid())
+  userId         String
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  categoryId     String
+  category       Category @relation(fields: [categoryId], references: [id])
+  month          Int      // 1 - 12
+  year           Int      // e.g. 2026
+  amountLimit    Float
+  alertThreshold Float    @default(80.0) // warning threshold in %
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@unique([userId, categoryId, month, year])
+}
+
+model Group {
+  id          String          @id @default(uuid())
+  name        String
+  description String?
+  currency    String          @default("USD")
+  inviteCode  String          @unique
+  createdById String
+  createdBy   User            @relation("CreatedGroups", fields: [createdById], references: [id])
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+
+  members     GroupMember[]
+  expenses    SharedExpense[]
+  settlements Settlement[]
+  activities  ActivityLog[]
+}
+
+model GroupMember {
+  id       String   @id @default(uuid())
+  groupId  String
+  group    Group    @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  userId   String
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role     String   @default("MEMBER") // ADMIN, MEMBER
+  joinedAt DateTime @default(now())
+
+  @@unique([groupId, userId])
+}
+
+model SharedExpense {
+  id          String         @id @default(uuid())
+  groupId     String
+  group       Group          @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  paidById    String
+  paidBy      User           @relation("PaidSharedExpenses", fields: [paidById], references: [id])
+  amount      Float
+  description String
+  date        DateTime       @default(now())
+  category    String         @default("General")
+  splitType   String         @default("EQUAL") // EQUAL, EXACT, PERCENTAGE, SHARES
+  notes       String?
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+
+  splits      ExpenseSplit[]
+}
+
+model ExpenseSplit {
+  id              String        @id @default(uuid())
+  sharedExpenseId String
+  sharedExpense   SharedExpense @relation(fields: [sharedExpenseId], references: [id], onDelete: Cascade)
+  userId          String
+  user            User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  amountOwed      Float
+  percentage      Float?
+  shares          Float?
+
+  @@unique([sharedExpenseId, userId])
+}
+
+model Settlement {
+  id        String   @id @default(uuid())
+  groupId   String
+  group     Group    @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  payerId   String
+  payer     User     @relation("PayerSettlements", fields: [payerId], references: [id])
+  payeeId   String
+  payee     User     @relation("PayeeSettlements", fields: [payeeId], references: [id])
+  amount    Float
+  date      DateTime @default(now())
+  notes     String?
+  status    String   @default("SETTLED") // PENDING, SETTLED
+  createdAt DateTime @default(now())
+}
+
+model ActivityLog {
+  id        String   @id @default(uuid())
+  groupId   String
+  group     Group    @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  action    String
+  details   String
+  createdAt DateTime @default(now())
+}

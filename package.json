@@ -1,0 +1,17 @@
+{
+  "name": "spendflow-capstone-project",
+  "version": "1.0.0",
+  "description": "Production-grade Personal & Shared Expense Tracker Web Application (CS Major Project)",
+  "private": true,
+  "scripts": {
+    "dev:backend": "cd backend && npm run dev",
+    "dev:frontend": "cd frontend && npm run dev",
+    "build": "cd backend && npm run build && cd ../frontend && npm run build",
+    "start": "cd backend && npm start",
+    "test": "cd backend && npm test",
+    "seed": "cd backend && npm run prisma:seed"
+  },
+  "keywords": ["expense-tracker", "full-stack", "react", "node", "typescript", "prisma", "min-cash-flow"],
+  "author": "Computer Science Capstone Team",
+  "license": "MIT"
+}
